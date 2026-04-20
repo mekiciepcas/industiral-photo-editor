@@ -159,7 +159,7 @@ export function EditClient({ id }: Props) {
 
   if (notFound) {
     return (
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex min-h-[100dvh] flex-1 items-center justify-center p-6">
         <div className="text-center">
           <h1 className="text-lg font-semibold">Fotoğraf bulunamadı</h1>
           <Link href="/" className="mt-3 inline-block text-sm text-emerald-400 underline">
@@ -172,14 +172,14 @@ export function EditClient({ id }: Props) {
 
   if (!photo || !originalUrl) {
     return (
-      <main className="flex-1 flex items-center justify-center">
+      <main className="flex min-h-[100dvh] flex-1 items-center justify-center">
         <p className="text-sm text-neutral-400">Yükleniyor...</p>
       </main>
     );
   }
 
   return (
-    <main className="flex-1 flex flex-col pt-safe pb-safe bg-neutral-950">
+    <main className="grid min-h-[100dvh] w-full grid-rows-[auto_minmax(0,1fr)_auto] bg-neutral-950 pt-safe pb-safe">
       <header className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
         <Link
           href="/"
@@ -204,7 +204,7 @@ export function EditClient({ id }: Props) {
         </div>
       </header>
 
-      <div className="relative flex-1 min-h-0 bg-black">
+      <div className="relative min-h-0 overflow-hidden bg-black">
         {mode === "crop" ? (
           <Cropper
             image={originalUrl}
@@ -222,12 +222,15 @@ export function EditClient({ id }: Props) {
           />
         ) : (
           displayUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={displayUrl}
-              alt="Çekilen fotoğraf"
-              className="h-full w-full object-contain"
-            />
+            <div className="flex h-full min-h-[40dvh] w-full items-center justify-center p-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={displayUrl}
+                alt="Çekilen fotoğraf"
+                className="max-h-full max-w-full object-contain"
+                draggable={false}
+              />
+            </div>
           )
         )}
       </div>

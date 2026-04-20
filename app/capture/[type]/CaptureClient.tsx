@@ -51,7 +51,7 @@ export function CaptureClient({ template }: Props) {
   const hintProps = useMemo(() => ({ videoRef }), []);
 
   return (
-    <div className="fixed inset-0 bg-black text-white">
+    <div className="fixed inset-0 z-0 min-h-[100dvh] bg-black text-white">
       <CameraView
         ref={(h) => {
           cameraRef.current = h;
