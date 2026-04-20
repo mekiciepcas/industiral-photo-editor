@@ -91,7 +91,7 @@ export function LevelIndicator({ onReadyChange, toleranceDeg = 4 }: Props) {
       <button
         type="button"
         onClick={requestPermission}
-        className="pointer-events-auto rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm"
+        className="pointer-events-auto rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium"
       >
         Seviye göstergesini etkinleştir
       </button>

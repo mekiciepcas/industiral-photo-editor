@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 
 export interface CameraViewHandle {
-  capture: () => { blob: Blob; width: number; height: number } | null;
+  /** Async: uses canvas.toBlob (faster than toDataURL on large frames). */
+  capture: () => Promise<{ blob: Blob; width: number; height: number } | null>;
   video: HTMLVideoElement | null;
 }
 
@@ -26,9 +27,25 @@ export const CameraView = forwardRef<CameraViewHandle, Props>(function CameraVie
   const streamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<"idle" | "requesting" | "ready" | "error">("idle");
   const [message, setMessage] = useState<string>("");
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let cancelled = false;
+    let readyDone = false;
+    let videoEl: HTMLVideoElement | null = null;
+    let onFirstFrame: (() => void) | null = null;
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const fireReady = () => {
+      if (cancelled || readyDone) return;
+      readyDone = true;
+      if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
+      setStatus("ready");
+      onReadyRef.current?.();
+    };
 
     async function start() {
       setStatus("requesting");
@@ -36,12 +53,13 @@ export const CameraView = forwardRef<CameraViewHandle, Props>(function CameraVie
         if (!navigator.mediaDevices?.getUserMedia) {
           throw new Error("Bu tarayıcı kamera erişimini desteklemiyor");
         }
+        // 4K ideal kills mobile GPUs and delays first frame; 1080p is plenty for this app.
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
             facingMode: { ideal: facingMode },
-            width: { ideal: 3840 },
-            height: { ideal: 2160 },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
           },
         });
         if (cancelled) {
@@ -50,64 +68,103 @@ export const CameraView = forwardRef<CameraViewHandle, Props>(function CameraVie
         }
         streamRef.current = stream;
         const video = videoRef.current;
-        if (video) {
-          video.srcObject = stream;
-          video.setAttribute("playsinline", "true");
-          video.muted = true;
-          await video.play().catch(() => undefined);
+        if (!video) {
+          setStatus("error");
+          setMessage("Video öğesi hazır değil");
+          onErrorRef.current?.(new Error("Video ref missing"));
+          return;
         }
-        setStatus("ready");
-        onReady?.();
+        videoEl = video;
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "true");
+        video.setAttribute("webkit-playsinline", "true");
+        video.muted = true;
+        const onLoadedData = () => {
+          video.removeEventListener("loadeddata", onLoadedData);
+          fireReady();
+        };
+        onFirstFrame = onLoadedData;
+        video.addEventListener("loadeddata", onLoadedData);
+        await video.play().catch(() => undefined);
+        if (!cancelled && video.readyState >= 2) {
+          video.removeEventListener("loadeddata", onLoadedData);
+          fireReady();
+        }
+        // Rare devices: no loadeddata; still show UI after a short wait so preview is not stuck.
+        fallbackTimer = setTimeout(() => {
+          if (!cancelled && video.readyState >= 1) {
+            video.removeEventListener("loadeddata", onLoadedData);
+            fireReady();
+          }
+        }, 2500);
       } catch (err) {
         const e = err as Error;
         setStatus("error");
         setMessage(e.message || "Kameraya erişilemedi");
-        onError?.(e);
+        onErrorRef.current?.(e);
       }
     }
 
     start();
     return () => {
       cancelled = true;
+      if (fallbackTimer !== undefined) clearTimeout(fallbackTimer);
+      if (videoEl && onFirstFrame) {
+        videoEl.removeEventListener("loadeddata", onFirstFrame);
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, [facingMode, onReady, onError]);
+  }, [facingMode]);
 
   useImperativeHandle(ref, () => ({
-    video: videoRef.current,
+    get video() {
+      return videoRef.current;
+    },
     capture: () => {
       const video = videoRef.current;
-      if (!video || video.readyState < 2) return null;
+      if (!video || video.readyState < 2) return Promise.resolve(null);
       const w = video.videoWidth;
       const h = video.videoHeight;
+      if (w < 2 || h < 2) return Promise.resolve(null);
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      ctx.drawImage(video, 0, 0, w, h);
-      // toBlob is async; produce a Blob synchronously via dataURL decode.
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
-      const bin = atob(dataUrl.split(",")[1]);
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      const blob = new Blob([arr], { type: "image/jpeg" });
-      return { blob, width: w, height: h };
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return Promise.resolve(null);
+      try {
+        ctx.drawImage(video, 0, 0, w, h);
+      } catch {
+        return Promise.resolve(null);
+      }
+      return new Promise((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(null);
+              return;
+            }
+            resolve({ blob, width: w, height: h });
+          },
+          "image/jpeg",
+          0.92,
+        );
+      });
     },
   }));
 
   return (
-    <div className="absolute inset-0 bg-black">
+    <div className="absolute inset-0 z-0 bg-black">
       <video
         ref={videoRef}
-        className="h-full w-full object-cover"
+        className="h-full w-full min-h-0 object-cover opacity-100"
+        style={{ transform: "translateZ(0)" }}
         playsInline
         muted
         autoPlay
       />
       {status !== "ready" && (
-        <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center p-6 text-center">
           <div className="max-w-xs">
             {status === "error" ? (
               <>

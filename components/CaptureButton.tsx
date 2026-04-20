@@ -13,7 +13,7 @@ export function CaptureButton({ onCapture, disabled, ready }: Props) {
       onClick={onCapture}
       disabled={disabled}
       aria-label="Fotoğraf çek"
-      className="relative h-20 w-20 rounded-full border-4 border-white/80 bg-white/10 backdrop-blur-sm active:scale-95 transition disabled:opacity-40"
+      className="relative h-20 w-20 rounded-full border-4 border-white/80 bg-white/15 active:scale-95 transition disabled:opacity-40"
     >
       <span
         className={`absolute inset-2 rounded-full transition ${

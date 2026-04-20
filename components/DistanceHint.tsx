@@ -21,7 +21,7 @@ interface Sample {
  * This is intentionally lightweight - we don't run object detection, just quick
  * pixel stats on a downscaled frame.
  */
-export function DistanceHint({ videoRef, intervalMs = 600 }: Props) {
+export function DistanceHint({ videoRef, intervalMs = 1800 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hint, setHint] = useState<string>("");
 
@@ -32,6 +32,7 @@ export function DistanceHint({ videoRef, intervalMs = 600 }: Props) {
       canvasRef.current.height = 64;
     }
     const timer = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas || video.readyState < 2) return;
@@ -51,7 +52,7 @@ export function DistanceHint({ videoRef, intervalMs = 600 }: Props) {
 
   if (!hint) return null;
   return (
-    <div className="pointer-events-none rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+    <div className="pointer-events-none rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
       {hint}
     </div>
   );

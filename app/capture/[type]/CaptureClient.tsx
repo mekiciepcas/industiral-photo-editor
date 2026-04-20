@@ -34,7 +34,7 @@ export function CaptureClient({ template }: Props) {
     setCapturing(true);
     try {
       attachVideo();
-      const shot = cameraRef.current?.capture();
+      const shot = await cameraRef.current?.capture();
       if (!shot) return;
       const id = await savePhoto({
         deviceType: template.id,
@@ -63,11 +63,11 @@ export function CaptureClient({ template }: Props) {
       <GuideOverlay template={template} opacity={opacity} ready={levelReady} />
 
       {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 pt-safe">
+      <div className="absolute inset-x-0 top-0 z-20 pt-safe">
         <div className="flex items-start justify-between px-4 pt-3">
           <Link
             href="/"
-            className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-xs font-medium backdrop-blur-sm"
+            className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -85,7 +85,7 @@ export function CaptureClient({ template }: Props) {
           <button
             type="button"
             onClick={() => setShowTips((s) => !s)}
-            className="pointer-events-auto rounded-full bg-black/45 px-3 py-1.5 text-xs font-medium backdrop-blur-sm"
+            className="pointer-events-auto rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium"
           >
             {showTips ? "İpuçları Gizle" : "İpuçları"}
           </button>
@@ -97,8 +97,8 @@ export function CaptureClient({ template }: Props) {
 
       {/* Tips bubble */}
       {showTips && (
-        <div className="absolute inset-x-0 top-20 flex justify-center px-4">
-          <div className="max-w-sm rounded-xl bg-black/60 px-3 py-2 text-xs text-white/90 backdrop-blur-sm">
+        <div className="absolute inset-x-0 top-20 z-20 flex justify-center px-4">
+          <div className="max-w-sm rounded-xl bg-black/75 px-3 py-2 text-xs text-white/90">
             <p className="font-semibold text-emerald-300 mb-1">
               {template.name}
             </p>
@@ -112,9 +112,9 @@ export function CaptureClient({ template }: Props) {
       )}
 
       {/* Bottom controls */}
-      <div className="absolute inset-x-0 bottom-0 pb-safe">
+      <div className="absolute inset-x-0 bottom-0 z-20 pb-safe">
         <div className="flex flex-col items-center gap-3 px-4 pb-4">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full bg-black/45 px-4 py-2 backdrop-blur-sm">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full bg-black/70 px-4 py-2">
             <span className="text-[11px] text-white/70">Şeffaflık</span>
             <input
               type="range"
@@ -135,7 +135,7 @@ export function CaptureClient({ template }: Props) {
             />
             <Link
               href="/gallery"
-              className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm"
+              className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/15"
               aria-label="Galeri"
             >
               <svg

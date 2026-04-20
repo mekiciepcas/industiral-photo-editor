@@ -19,7 +19,7 @@ interface Props {
  */
 export function GuideOverlay({ template, opacity, ready = false }: Props) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
       {/* Rule-of-thirds grid */}
       <svg
         className="absolute inset-0 h-full w-full text-white/20"
