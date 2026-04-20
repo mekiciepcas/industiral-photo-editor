@@ -153,15 +153,24 @@ export const CameraView = forwardRef<CameraViewHandle, Props>(function CameraVie
     },
   }));
 
+  const handlePlaying = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    // Force a single layout/compositor pass so Android Chrome paints the first frame.
+    void v.offsetWidth;
+  };
+
   return (
-    <div className="absolute inset-0 z-0 bg-black">
+    <div className="fixed inset-0 z-0 bg-black">
       <video
         ref={videoRef}
-        className="h-full w-full min-h-0 object-cover opacity-100"
-        style={{ transform: "translateZ(0)" }}
+        className="fixed inset-0 z-[1] block h-[100dvh] w-screen object-cover"
         playsInline
         muted
         autoPlay
+        disablePictureInPicture
+        onPlaying={handlePlaying}
+        onLoadedMetadata={handlePlaying}
       />
       {status !== "ready" && (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center p-6 text-center">
