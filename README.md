@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UPS Photo Studio
 
-## Getting Started
+Endüstriyel güç elektroniği cihazlarının (UPS, inverter, rectifier, rack / dikili
+/ duvar tipi / endüstriyel kabin) profesyonel fotoğraflarını çekmek için mobile
+öncelikli bir Progressive Web App. Çekim sırasında cihaz tipine özgü SVG silüet
+rehberi, 3x3 ızgara ve telefon seviye göstergesi gösterir; çekim sonrası
+tarayıcıda AI ile (ESRGAN-slim) çözünürlük yükseltir.
 
-First, run the development server:
+Tamamen client-side çalışır — görseller cihazdan dışarı çıkmaz, her şey
+IndexedDB içinde kalır.
+
+## Özellikler
+
+- Cihaz tipine göre akıllı çekim rehberi (rack, dikili, duvar, endüstriyel)
+- Yarı saydam SVG silüet + rule-of-thirds ızgarası + merkez hedefi
+- `DeviceOrientationEvent` tabanlı yatay/dikey eğim (level) göstergesi
+  (iOS'ta tek dokunuşla izin akışı)
+- Parlaklık/kontrast sezgisel uyarıları (aşırı pozlanma, düşük ışık,
+  "cihazı silüete hizalayın")
+- `react-easy-crop` ile kırpma, zoom ve döndürme
+- [UpscalerJS](https://upscalerjs.com/) + `@upscalerjs/esrgan-slim` ile 2x / 3x
+  / 4x AI çözünürlük artırma, TensorFlow.js üzerinde (WebGL/WebGPU)
+- IndexedDB galeri, Web Share API ile paylaşım, indirme
+- [Serwist](https://serwist.pages.dev/) ile PWA / offline cache, ana ekrana
+  eklenebilir
+
+## Çalıştırma
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
+# veya üretim:
+npm run build
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`getUserMedia` ve `DeviceOrientationEvent` için HTTPS ZORUNLUDUR. Telefondan
+test için:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `localhost` tarayıcıda çalışır.
+- LAN üzerinden telefonla test için `next dev --experimental-https` veya ngrok /
+  tunnel servisleri kullanın.
+- En kolay yöntem: Vercel / Cloudflare Pages deploy.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Mimari
 
-## Learn More
+```
+app/
+  page.tsx                    # Ana ekran - cihaz tipi seçimi
+  capture/[type]/             # Canlı kamera + rehber overlay
+  edit/[id]/                  # Kırpma + AI upscale
+  gallery/                    # Kayıtlı fotoğraflar
+  manifest.ts                 # PWA manifest
+  icon.tsx, apple-icon.tsx    # Dinamik uygulama ikonları
+  sw.ts                       # Service worker (Serwist)
 
-To learn more about Next.js, take a look at the following resources:
+components/
+  CameraView.tsx              # getUserMedia + capture
+  GuideOverlay.tsx            # Silüet + 3x3 ızgara
+  LevelIndicator.tsx          # DeviceOrientation bubble level
+  DistanceHint.tsx            # Brightness / contrast hints
+  CaptureButton.tsx
+  UpscalePanel.tsx            # Upscaling UI + progress
+  SilhouettePreview.tsx
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+lib/
+  templates.ts                # Cihaz tipi şablonları (SVG path'ler)
+  storage.ts                  # idb IndexedDB sarmalayıcı
+  upscale.ts                  # UpscalerJS entegrasyonu
+  image.ts                    # Blob/crop yardımcıları
+  utils.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notlar
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16 varsayılan olarak Turbopack kullanır; Serwist henüz Turbopack
+  build'i desteklemediğinden `dev` ve `build` script'leri `--webpack` ile
+  çalıştırılır.
+- İlk AI upscale çağrısında TF.js + model (~5-15 MB) indirilir; sonraki
+  çağrılarda hem model hem SW cache nedeniyle anlık başlar.
+- `@upscalerjs/esrgan-slim`'in 2x, 3x, 4x alt paketleri vardır; UI seçiciden
+  faktör değişince önceki model disposable olarak serbest bırakılır.
+- iOS Safari `DeviceOrientationEvent.requestPermission()` sadece kullanıcı
+  etkileşimi sonrası çağrılabildiğinden kamera ekranında "Seviye göstergesini
+  etkinleştir" butonu gösterilir.
